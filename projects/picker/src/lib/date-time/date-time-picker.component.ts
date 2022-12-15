@@ -118,6 +118,34 @@ export class OwlDateTimeComponent<T> extends OwlDateTime<T>
         );
     }
 
+    /** The end date to set for range calendar. */
+    private _endAt: T | null;
+    @Input()
+    get endAt(): T | null {
+        if (this._endAt) {
+            return this._endAt;
+        }
+
+        if (this._dtInput) {
+            if (this._dtInput.selectMode === 'single') {
+                return this._dtInput.value || null;
+            } else if (
+                this._dtInput.selectMode === 'range' ||
+                this._dtInput.selectMode === 'rangeFrom'
+            ) {
+                return this._dtInput.values[1] || null;
+            }
+        } else {
+            return null;
+        }
+    }
+
+    set endAt(date: T | null) {
+        this._endAt = this.getValidDate(
+            this.dateTimeAdapter.deserialize(date)
+        );
+    }
+
     /**
      * Set the type of the dateTime picker
      *      'both' -- show both calendar and timer
@@ -174,7 +202,7 @@ export class OwlDateTimeComponent<T> extends OwlDateTime<T>
     }
 
     /** Whether the calendar is open. */
-    private _opened: boolean = false;
+    private _opened = false;
     @Input()
     get opened(): boolean {
         return this._opened;
@@ -216,6 +244,12 @@ export class OwlDateTimeComponent<T> extends OwlDateTime<T>
      * */
     @Output()
     monthSelected = new EventEmitter<T>();
+
+    /**
+     * Emits selected date
+     * */
+    @Output()
+    dateSelected = new EventEmitter<T>();
 
     /**
      * Emit when the selected value has been confirmed
@@ -292,10 +326,10 @@ export class OwlDateTimeComponent<T> extends OwlDateTime<T>
         return this._dtInput.isInRangeMode;
     }
 
-    private defaultScrollStrategy: () => ScrollStrategy;
+    private readonly defaultScrollStrategy: () => ScrollStrategy;
 
     constructor(
-        private overlay: Overlay,
+        public overlay: Overlay,
         private viewContainerRef: ViewContainerRef,
         private dialogService: OwlDialogService,
         private ngZone: NgZone,
@@ -446,6 +480,13 @@ export class OwlDateTimeComponent<T> extends OwlDateTime<T>
     }
 
     /**
+     * Emits the selected date
+     * */
+     public selectDate(normalizedDate: T): void {
+        this.dateSelected.emit(normalizedDate);
+    }
+
+    /**
      * Hide the picker
      */
     public close(): void {
@@ -487,7 +528,8 @@ export class OwlDateTimeComponent<T> extends OwlDateTime<T>
         const completeClose = () => {
             if (this._opened) {
                 this._opened = false;
-                this.afterPickerClosed.emit(null);
+                const selected = this.selected || this.selecteds;
+                this.afterPickerClosed.emit(selected);
                 this.focusedElementBeforeOpen = null;
             }
         };
